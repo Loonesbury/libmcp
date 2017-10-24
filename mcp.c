@@ -533,7 +533,7 @@ void mcp_send(McpState *mcp, McpMessage *msg)
 		if (!b.err)
 			mcp->send(mcp->data, b.buf);
 	}
-	free(b.s);
+	free(b.buf);
 }
 
 void mcp_sendraw(McpState *mcp, char *str)
