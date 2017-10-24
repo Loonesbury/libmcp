@@ -513,9 +513,6 @@ void mcp_send(McpState *mcp, McpMessage *msg)
 	int ok, ismcp = !strcmp(msg->name, "mcp");
 	int len = 3 + strlen(msg->name);
 
-	if (msg->args->size > 0)
-		len++;
-
 	if (!ismcp)
 		len += 1 + strlen(mcp->authkey);
 
@@ -532,6 +529,7 @@ void mcp_send(McpState *mcp, McpMessage *msg)
 	}
 	if (ok) {
 		aa_foreach(msg->args, &cat_args, &b);
+		assert(b.s + 1 == b.e);
 		if (!b.err)
 			mcp->send(mcp->data, b.buf);
 	}
