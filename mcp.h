@@ -35,7 +35,6 @@ typedef struct McpState {
 typedef struct McpMessage {
 	char *name;
 	struct aa_tree *args;
-	int len;
 } McpMessage;
 
 /* Callback for MCP messages */

@@ -259,7 +259,6 @@ static int handle_msg(McpState *mcp, char *name, aa_tree *args)
 
 	msg.name = name;
 	msg.args = args;
-	msg.len = 0;
 
 	h = (McpFuncHandle*)aa_get(mcp->handlers, name);
 	assert(h != NULL);
@@ -498,6 +497,11 @@ int cat_buf(struct bufinfo *b, char *fmt, ...)
 	return 1;
 }
 
+static void count_args(aa_node *n, void *arg)
+{
+	*((int*)arg) += 3 + strlen(n->key) + strlen(n->val);
+}
+
 static void cat_args(aa_node *n, void *arg)
 {
 	cat_buf((struct bufinfo*)arg, " %s: %s", n->key, (char*)n->val);
@@ -507,15 +511,18 @@ void mcp_send(McpState *mcp, McpMessage *msg)
 {
 	struct bufinfo b;
 	int ok, ismcp = !strcmp(msg->name, "mcp");
+	int len = 3 + strlen(msg->name);
 
 	if (msg->args->size > 0)
-		msg->len++;
+		len++;
 
 	if (!ismcp)
-		msg->len += 1 + strlen(mcp->authkey);
+		len += 1 + strlen(mcp->authkey);
 
-	b.s = b.buf = malloc(msg->len + 1);
-	b.e = b.s + msg->len + 1;
+	aa_foreach(msg->args, &count_args, &len);
+
+	b.s = b.buf = malloc(len + 1);
+	b.e = b.s + len + 1;
 	b.err = 0;
 
 	if (ismcp) {
@@ -549,7 +556,6 @@ McpMessage* mcp_newmsg(char *name)
 	int len = strlen(name);
 	McpMessage *msg = memset(malloc(sizeof(McpMessage)), 0, sizeof(McpMessage));
 	msg->name = memcpy(malloc(len + 1), name, len + 1);
-	msg->len = 3 + len;
 	msg->args = aa_new(&free);
 	return msg;
 }
@@ -565,7 +571,6 @@ void mcp_addarg(McpMessage *msg, char *key, char *val)
 {
 	if (valid_unquoted(val)) {
 		aa_insert(msg->args, key, str_dup(val));
-		msg->len += (3 + strlen(key) + strlen(val));
 	} else {
 		/* +2 for quotes */
 		int len = 2;
@@ -586,8 +591,6 @@ void mcp_addarg(McpMessage *msg, char *key, char *val)
 		*w++ = '"';
 		*w = '\0';
 		aa_insert(msg->args, key, buf);
-		/* +3 for delimiters and colon */
-		msg->len += (3 + strlen(key) + len);
 	}
 }
 
