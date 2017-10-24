@@ -174,6 +174,7 @@ static void foreach_pkgs(aa_node *n, void *arg)
 static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 {
 	short minver[2], maxver[2];
+	McpMessage *endmsg;
 
 	/* already received 'mcp'? */
 	if (mcp->status != MCP_STATUS_UNK)
@@ -196,21 +197,23 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 		}
 		mcp->authkey = str_dup(authkey);
 	} else {
-		mcp_addarg(msg, "authentication-key", mcp->authkey);
-		mcp_send(mcp, msg);
+		McpMessage *resp = mcp_newmsg("mcp");
+		mcp_addarg(resp, "version", "2.1");
+		mcp_addarg(resp, "to", "2.1");
+		mcp_addarg(resp, "authentication-key", mcp->authkey);
+		mcp_send(mcp, resp);
+		mcp_freemsg(resp);
 	}
 	mcp->status = MCP_STATUS_YES;
 
 	/* both sides send packages */
 	aa_foreach(mcp->pkgs, &foreach_pkgs, mcp);
 
-	/* mcp-negotiate 1.0 doesn't recognize 'end' but it should */
-	/* be ignored by a compliant implementation */
-	{
-		McpMessage *endmsg = mcp_newmsg("mcp-negotiate-end");
-		mcp_send(mcp, endmsg);
-		mcp_freemsg(endmsg);
-	}
+	/* mcp-negotiate 1.0 doesn't recognize 'end', but it should be */
+	/* safely ignored by a compliant implementation */
+	endmsg = mcp_newmsg("mcp-negotiate-end");
+	mcp_send(mcp, endmsg);
+	mcp_freemsg(endmsg);
 
 	return MCP_OK;
 }
@@ -264,23 +267,14 @@ void mcp_free(McpState *mcp)
 		aa_free(mcp->mlines);
 }
 
-/* i'm not saying this is the worst thing i've ever written but it's close */
-static void foreach_arglen(aa_node *n, void *arg)
-{
-	int *sum = (int*)arg;
-	*sum += 3 + strlen(n->key) + strlen((char*)n->val);
-}
-
 static int handle_msg(McpState *mcp, char *name, aa_tree *args)
 {
 	static McpMessage msg;
 	McpFuncHandle *h;
 
-	msg.len = 3 + strlen(name) + (aa_size(args) > 0 ? 1 : 0);
 	msg.name = name;
 	msg.args = args;
-
-	aa_foreach(args, &foreach_arglen, &msg.len);
+	msg.len = 0;
 
 	h = (McpFuncHandle*)aa_get(mcp->handlers, name);
 	assert(h != NULL);
