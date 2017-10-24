@@ -10,7 +10,11 @@ struct aa_tree;
 typedef void (*McpSendFunc)(void *data, char *str);
 
 typedef struct McpState {
-	int status;
+	/*
+	* 0 if negotiation hasn't been started
+	* -1 if bad negotiation or incompatible version
+	*/
+	int version;
 	/* true if we are a server instance */
 	int server;
 	/* authkey for this session */
@@ -39,9 +43,8 @@ typedef int (*McpFunc)(McpState* mcp, McpMessage *msg);
 
 typedef struct McpPackage {
 	char *name;
-	short version[2];
-	short minver[2];
-	short maxver[2];
+	int minver;
+	int maxver;
 	struct aa_tree *funcs;
 } McpPackage;
 
@@ -49,13 +52,11 @@ typedef struct McpFuncHandle {
 	McpFunc fn;
 } McpFuncHandle;
 
-#define MCP_STATUS_UNK 0 /* not negotiated yet */
-#define MCP_STATUS_YES 1 /* negotiated, good to go */
-#define MCP_STATUS_NO  2 /* version mismatch or invalid negotiation */
-
 #define MCP_NONE  0
 #define MCP_OK    1
 #define MCP_ERROR 2
+
+#define MCP_VERSION(major, minor) ((major)*1000 + (minor))
 
 /*
 * Opens a new MCP state.
@@ -89,12 +90,12 @@ void mcp_send(McpState *mcp, McpMessage *msg);
 */
 void mcp_sendraw(McpState *mcp, char *str);
 
-McpMessage* mcp_newmsg(char *name);
+McpMessage* mcp_newmsg (char *name);
 void        mcp_freemsg(McpMessage *msg);
-void        mcp_addarg(McpMessage *msg, char *key, char *val);
-char*       mcp_getarg(McpMessage *msg, char *key);
+void        mcp_addarg (McpMessage *msg, char *key, char *val);
+char*       mcp_getarg (McpMessage *msg, char *key);
 
-McpPackage* mcp_newpkg (char *name, short minmajor, short minminor, short maxmajor, short maxminor);
+McpPackage* mcp_newpkg (char *name, int minver, int maxver);
 void        mcp_freepkg(McpPackage *pkg);
 int         mcp_addfunc(McpPackage *pkg, char *name, McpFunc fn);
 

@@ -97,59 +97,32 @@ static void foreach_args(aa_node *n, void *_)
 	free(arg);
 }
 
-static int ver_ge(short *a, short *b)
+int ver_check(int low, int high, int min, int max)
 {
-	return (a[0] > b[0]) || (a[0] == b[0] && a[1] >= b[1]);
+	if (high >= min && max >= low)
+		return (high > max) ? max : high;
+	return 0;
 }
 
-short* mcp_checkversion(short *low, short *high, short *min, short *max)
+int ver_get(McpMessage *msg, char *key)
 {
-	if (ver_ge(high, min) && ver_ge(max, low)) {
-		if (ver_ge(high, max))
-			return max;
-		else
-			return high;
-	}
-	return NULL;
+	char *s = mcp_getarg(msg, key), *n = s;
+	int ver = 0;
+	if (!s || !isdigit(*s))
+		return -1;
+	ver += strtol(s, &n, 10)*1000;
+	if (!n || n == s || *n != '.')
+		return -1;
+	ver += strtol((s = n + 1), &n, 10);
+	if (!n || !*n)
+		return ver;
+	return -1;
 }
 
-int ver_fromstr(char *str, short *i)
+void ver_tostr(int ver, char *str)
 {
-	char *s = str, *dot = NULL;
-	if (!str)
-		return 0;
-
-	if (!isdigit(*s++))
-		return 0;
-	while (*s) {
-		if (*s == '.') {
-			if (dot)
-				return 0;
-			dot = s;
-		} else if (!isdigit(*s)) {
-			return 0;
-		}
-		s++;
-	}
-	while (*s == ' ')
-		s++;
-	if (*s || !dot)
-		return 0;
-	*dot = '\0';
-	i[0] = atoi(str);
-	i[1] = atoi(dot + 1);
-	*dot = '.';
-
-	return 1;
+	sprintf(str, "%i.%i", ver/1000 % 1000, ver % 1000);
 }
-
-void ver_tostr(short *i, char *str)
-{
-	sprintf(str, "%.7h.%.7h", i[0], i[1]);
-}
-
-/* hardcoded - we do not support 1.0 */
-static short ourver[2] = {2, 1};
 
 static void foreach_pkgs(aa_node *n, void *arg)
 {
@@ -173,26 +146,35 @@ static void foreach_pkgs(aa_node *n, void *arg)
 /* this is a builtin because reasons */
 static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 {
-	short minver[2], maxver[2];
+	/* our supported version */
+	int min = MCP_VERSION(2, 1), max = MCP_VERSION(2, 1);
+	/* their supported version */
+	int from, to;
 	McpMessage *endmsg;
 
 	/* already received 'mcp'? */
-	if (mcp->status != MCP_STATUS_UNK)
+	if (mcp->version != 0)
 		return MCP_ERROR;
 
-	if (!ver_fromstr(mcp_getarg(msg, "version"), minver) ||
-		!ver_fromstr(mcp_getarg(msg, "to"), minver) ||
-		!mcp_checkversion(minver, maxver, ourver, ourver))
-	{
-		mcp->status = MCP_STATUS_NO;
+	from = ver_get(msg, "version");
+	to   = ver_get(msg, "to");
+	if (from < 0 || to < 0) {
+		/* the standard doesn't say that 0.0 is an illegal version */
+		/* so we only halt for malformed numbers */
+		mcp->version = -1;
 		return MCP_ERROR;
 	}
+
+	mcp->version = ver_check(from, to, min, max);
+	if (!mcp->version)
+		/* not technically an error */
+		return MCP_OK;
 
 	if (mcp->server) {
 		/* server gets authkey from client */
 		char *authkey = mcp_getarg(msg, "authentication-key");
 		if (!valid_unquoted(authkey)) {
-			mcp->status = MCP_STATUS_NO;
+			mcp->version = -1;
 			return MCP_ERROR;
 		}
 		mcp->authkey = str_dup(authkey);
@@ -204,7 +186,6 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 		mcp_send(mcp, resp);
 		mcp_freemsg(resp);
 	}
-	mcp->status = MCP_STATUS_YES;
 
 	/* both sides send packages */
 	aa_foreach(mcp->pkgs, &foreach_pkgs, mcp);
@@ -572,16 +553,12 @@ char* mcp_getarg(McpMessage *msg, char *key)
 	return (char*)aa_get(msg->args, key);
 }
 
-McpPackage* mcp_newpkg(char *name, short minmajor, short minminor, short maxmajor, short maxminor)
+McpPackage* mcp_newpkg(char *name, int minver, int maxver)
 {
 	McpPackage *pkg = memset(malloc(sizeof(McpPackage)), 0, sizeof(McpPackage));
 	pkg->name = str_dup(name);
-
-	pkg->minver[0] = minmajor;
-	pkg->minver[1] = minminor;
-	pkg->maxver[0] = maxmajor;
-	pkg->maxver[1] = maxminor;
-
+	pkg->minver = minver;
+	pkg->maxver = maxver;
 	pkg->funcs = aa_new(&free);
 	return pkg;
 }
