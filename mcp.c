@@ -37,7 +37,7 @@ static char* str_lower(char *s)
 /* checks if 's' is a valid keyword */
 static int valid_ident(char *s)
 {
-	char c = *s;
+	char c = *s++;
 	if (!isalpha(c) && c != '_')
 		return 0;
 	while ((c = *s++)) {
