@@ -415,6 +415,7 @@ int mcp_parse(McpState *mcp, char *buf)
 				b++;
 			}
 			*write++ = '\0';
+			b++;
 		} else {
 			argv = b;
 			while (1) {
