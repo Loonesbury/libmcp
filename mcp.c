@@ -253,6 +253,9 @@ static int handle_msg(McpState *mcp, char *name, aa_tree *args)
 	static McpMessage msg;
 	McpFuncHandle *h;
 
+	if (strcmp(name, "mcp") && mcp->version <= 0)
+		return MCP_ERROR;
+
 	msg.name = name;
 	msg.args = args;
 	msg.len = 0;
