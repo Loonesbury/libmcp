@@ -494,6 +494,7 @@ int cat_buf(struct bufinfo *b, char *fmt, ...)
 		b->err = 1;
 		return 0;
 	}
+	b->s += ct;
 	return 1;
 }
 
