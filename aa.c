@@ -144,10 +144,9 @@ aa_tree* aa_new(aa_freefn freeval)
 
 void aa_free(aa_tree* tree)
 {
-	if (tree->top)
+	if (tree->top != tree->bottom)
 		freenode(tree, tree->top, 1);
-	if (tree->bottom)
-		free(tree->bottom);
+	free(tree->bottom);
 	free(tree);
 }
 
