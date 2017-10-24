@@ -618,9 +618,7 @@ void mcp_freepkg(McpPackage *pkg)
 
 int mcp_addfunc(McpPackage *pkg, char *name, McpFunc fn)
 {
-	McpFuncHandle *h = malloc(sizeof(McpFuncHandle));
-	h->fn = fn;
-	return aa_insert(pkg->funcs, name, h);
+	return aa_insert(pkg->funcs, name, mcp_wrapfn(fn));
 }
 
 int mcp_register(McpState *mcp, McpPackage *pkg)
