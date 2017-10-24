@@ -7,8 +7,8 @@ else
 endif
 
 CC=gcc
-DEPFLAGS=-std=c89 -pedantic -c
-CFLAGS=-g -fPIC -std=c89 -pedantic -Wall -Wpedantic
+DEPFLAGS=-c
+CFLAGS=-g -fPIC -Wall -Wpedantic
 LFLAGS=-g -shared
 SRC=mcp.c strbuf.c aa.c
 OBJ=$(SRC:%.c=%.o)

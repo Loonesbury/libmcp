@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
@@ -119,9 +120,9 @@ int ver_get(McpMessage *msg, char *key)
 	return -1;
 }
 
-void ver_tostr(int ver, char *str)
+void ver_tostr(int ver, char *str, int sz)
 {
-	sprintf(str, "%i.%i", ver/1000 % 1000, ver % 1000);
+	snprintf(str, sz, "%i.%i", ver/1000, ver % 1000);
 }
 
 static void foreach_pkgs(aa_node *n, void *arg)
@@ -133,10 +134,10 @@ static void foreach_pkgs(aa_node *n, void *arg)
 	McpMessage *msg = mcp_newmsg("mcp-negotiate-can");
 	mcp_addarg(msg, "package", pkg->name);
 
-	ver_tostr(pkg->minver, vstr);
+	ver_tostr(pkg->minver, vstr, sizeof(vstr));
 	mcp_addarg(msg, "min-version", vstr);
 
-	ver_tostr(pkg->maxver, vstr);
+	ver_tostr(pkg->maxver, vstr, sizeof(vstr));
 	mcp_addarg(msg, "max-version", vstr);
 
 	mcp_send(mcp, msg);
@@ -471,25 +472,62 @@ int mcp_parse(McpState *mcp, char *buf)
 	return rv;
 }
 
+struct bufinfo {
+	char *buf, *s, *e;
+	int err;
+};
+
+int cat_buf(struct bufinfo *b, char *fmt, ...)
+{
+	int szleft = b->e - b->s;
+	int ct;
+	assert(szleft > 0);
+	if (b->err)
+		return 0;
+
+	va_list args;
+	va_start(args, fmt);
+	ct = vsnprintf(b->s, szleft, fmt, args);
+	va_end(args);
+
+	if (ct < 0 || ct >= szleft) {
+		b->err = 1;
+		return 0;
+	}
+	return 1;
+}
+
 static void cat_args(aa_node *n, void *arg)
 {
-	char **s = (char**)arg;
-	*s += sprintf(*s, " %s: %s", n->key, (char*)n->val);
+	cat_buf((struct bufinfo*)arg, " %s: %s", n->key, (char*)n->val);
 }
 
 void mcp_send(McpState *mcp, McpMessage *msg)
 {
-	char *buf, *b;
-	msg->len += 1 + strlen(mcp->authkey);
+	struct bufinfo b;
+	int ok, ismcp = !strcmp(msg->name, "mcp");
+
 	if (msg->args->size > 0)
 		msg->len++;
 
-	buf = b = malloc(msg->len + 1);
-	b += sprintf(b, "#$#%s %s", msg->name, mcp->authkey);
-	aa_foreach(msg->args, &cat_args, &b);
+	if (!ismcp)
+		msg->len += 1 + strlen(mcp->authkey);
 
-	mcp->send(mcp->data, buf);
-	free(buf);
+	b.s = b.buf = malloc(msg->len + 1);
+	b.e = b.s + msg->len + 1;
+	b.err = 0;
+
+	if (ismcp) {
+		ok = cat_buf(&b, "#$#mcp");
+	} else {
+		ok = cat_buf(&b, "#$#%s %s", msg->name, mcp->authkey);
+	}
+	if (ok) {
+		aa_foreach(msg->args, &cat_args, &b);
+		if (!b.err)
+			mcp->send(mcp->data, b.buf);
+	}
+	free(b.s);
 }
 
 void mcp_sendraw(McpState *mcp, char *str)
