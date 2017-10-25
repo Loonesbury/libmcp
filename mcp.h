@@ -63,7 +63,11 @@ typedef struct McpFuncHandle {
 */
 McpState* mcp_newclient(McpSendFunc fn, char *authkey);
 McpState* mcp_newserver(McpSendFunc fn, void *data);
-void      mcp_free     (McpState *mcp);
+/*
+* Frees an MCP state.
+* Packages are NOT freed, nor is the data ptr passed to mcp_newserver().
+*/
+void mcp_free(McpState *mcp);
 
 /*
 * Parses and handles any MCP in 'buf', which MAY BE MODIFIED.
@@ -98,6 +102,13 @@ McpPackage* mcp_newpkg (char *name, int minver, int maxver);
 void        mcp_freepkg(McpPackage *pkg);
 int         mcp_addfunc(McpPackage *pkg, char *name, McpFunc fn);
 
-int         mcp_register(McpState *mcp, McpPackage *pkg);
+/*
+* Registers a package for use. Must be done BEFORE negotiation.
+* Packages may be registered with more than one MCP state, and
+* are not freed when the state is freed.
+*
+* Returns true if the package was already registered.
+*/
+int mcp_register(McpState *mcp, McpPackage *pkg);
 
 #endif

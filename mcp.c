@@ -86,6 +86,7 @@ static void mcp_freearg(void *val)
 		sb_free(arg->val.buf);
 	else
 		free(arg->val.str);
+	free(arg);
 }
 
 static void foreach_args(aa_node *n, void *_)
@@ -243,10 +244,12 @@ McpState* mcp_newserver(McpSendFunc sendfn, void *data)
 
 void mcp_free(McpState *mcp)
 {
-	if (mcp->handlers)
-		aa_free(mcp->handlers);
-	if (mcp->mlines)
-		aa_free(mcp->mlines);
+	free(mcp->authkey);
+	/* does not free packages, just our handles to them */
+	aa_free(mcp->pkgs);
+	aa_free(mcp->handlers);
+	aa_free(mcp->mlines);
+	free(mcp);
 }
 
 static int handle_msg(McpState *mcp, char *name, aa_tree *args)
@@ -551,17 +554,16 @@ void mcp_sendraw(McpState *mcp, char *str)
 
 McpMessage* mcp_newmsg(char *name)
 {
-	int len = strlen(name);
 	McpMessage *msg = memset(malloc(sizeof(McpMessage)), 0, sizeof(McpMessage));
-	msg->name = memcpy(malloc(len + 1), name, len + 1);
+	msg->name = str_dup(name);
 	msg->args = aa_new(&free);
 	return msg;
 }
 
 void mcp_freemsg(McpMessage *msg)
 {
-	if (msg->args)
-		aa_free(msg->args);
+	free(msg->name);
+	aa_free(msg->args);
 	free(msg);
 }
 
@@ -609,10 +611,8 @@ McpPackage* mcp_newpkg(char *name, int minver, int maxver)
 
 void mcp_freepkg(McpPackage *pkg)
 {
-	if (pkg->name)
-		free(pkg->name);
-	if (pkg->funcs)
-		aa_free(pkg->funcs);
+	free(pkg->name);
+	aa_free(pkg->funcs);
 	free(pkg);
 }
 
