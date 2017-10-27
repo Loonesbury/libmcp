@@ -7,7 +7,7 @@ typedef struct strbuf {
 	int size;
 } strbuf;
 
-strbuf* sb_new();
+strbuf* sb_new(int len);
 void    sb_free(strbuf *sb);
 char*   sb_release(strbuf *sb);
 

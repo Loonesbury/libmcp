@@ -68,7 +68,7 @@ static McpArg* mcp_newarg(char *s, int multi)
 	McpArg *arg = malloc(sizeof(McpArg));
 	arg->multi = multi;
 	if (multi) {
-		strbuf *sb = sb_new();
+		strbuf *sb = sb_new(256);
 		sb->str = s;
 		sb->len = strlen(s);
 		sb->size = sb->len + 1;
