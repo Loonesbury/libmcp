@@ -135,18 +135,12 @@ static void foreach_pkgs(aa_node *n, void *arg)
 	char vstr[16];
 	McpState *mcp = (McpState*)arg;
 	McpPackage *pkg = (McpPackage*)n->val;
-
-	McpMessage *msg = mcp_newmsg("mcp-negotiate-can");
-	mcp_addarg(msg, "package", pkg->name);
-
-	ver_tostr(pkg->minver, vstr, sizeof(vstr));
-	mcp_addarg(msg, "min-version", vstr);
-
-	ver_tostr(pkg->maxver, vstr, sizeof(vstr));
-	mcp_addarg(msg, "max-version", vstr);
-
-	mcp_sendmsg(mcp, msg);
-	mcp_freemsg(msg);
+	mcp_send(mcp, "mcp-negotiate-can",
+		"package", pkg->name,
+		"min-version", vstr,
+		"max-version", vstr,
+		NULL
+	);
 }
 
 /* this is a builtin because reasons */
@@ -156,7 +150,6 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 	int min, max;
 	/* their supported version */
 	int from, to;
-	McpMessage *endmsg;
 
 	/* already received 'mcp'? */
 	if (mcp->version != 0)
@@ -186,22 +179,18 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 		}
 		mcp->authkey = str_dup(authkey);
 	} else {
-		McpMessage *resp = mcp_newmsg("mcp");
-		mcp_addarg(resp, "version", "2.1");
-		mcp_addarg(resp, "to", "2.1");
-		mcp_addarg(resp, "authentication-key", mcp->authkey);
-		mcp_sendmsg(mcp, resp);
-		mcp_freemsg(resp);
+		mcp_send(mcp, "mcp",
+			"version", "2.1",
+			"to", "2.1",
+			"authentication-key", mcp->authkey
+		);
 	}
 
 	/* both sides send packages */
 	aa_foreach(mcp->pkgs, &foreach_pkgs, mcp);
-
 	/* mcp-negotiate 1.0 doesn't recognize 'end', but it should be */
 	/* safely ignored by a compliant implementation */
-	endmsg = mcp_newmsg("mcp-negotiate-end");
-	mcp_sendmsg(mcp, endmsg);
-	mcp_freemsg(endmsg);
+	mcp_send(mcp, "mcp-negotiate-end");
 
 	return MCP_OK;
 }
