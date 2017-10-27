@@ -474,20 +474,21 @@ int mcp_parse(McpState *mcp, char *buf)
 	return rv;
 }
 
-struct bufinfo {
+typedef struct bufinfo {
 	char *buf, *s, *e;
 	int err;
-};
+} bufinfo;
 
-int cat_buf(struct bufinfo *b, char *fmt, ...)
+int cat_buf(bufinfo *b, char *fmt, ...)
 {
 	int szleft = b->e - b->s;
 	int ct;
+	va_list args;
+
 	assert(szleft > 0);
 	if (b->err)
 		return 0;
 
-	va_list args;
 	va_start(args, fmt);
 	ct = vsnprintf(b->s, szleft, fmt, args);
 	va_end(args);
@@ -507,7 +508,12 @@ static void count_args(aa_node *n, void *arg)
 
 static void cat_args(aa_node *n, void *arg)
 {
-	cat_buf((struct bufinfo*)arg, " %s: %s", n->key, (char*)n->val);
+	bufinfo *b = (bufinfo*)arg;
+	if (!valid_ident(n->key))
+		b->err = 2;
+	if (b->err)
+		return;
+	cat_buf(b, " %s: %s", n->key, (char*)n->val);
 }
 
 int mcp_send(McpState *mcp, McpMessage *msg)
@@ -535,6 +541,10 @@ int mcp_send(McpState *mcp, McpMessage *msg)
 	}
 	assert(ok);
 	aa_foreach(msg->args, &cat_args, &b);
+	if (b.err == 2) {
+		free(b.buf);
+		return 0;
+	}
 
 	assert(!b.err);
 	assert(b.s + 1 == b.e);
