@@ -7,7 +7,8 @@ typedef struct strbuf {
 	int size;
 } strbuf;
 
-strbuf* sb_new(int len);
+/* 'minlen' is a desired starting capacity, not including the trailing NULL */
+strbuf* sb_new(int minlen);
 void    sb_free(strbuf *sb);
 char*   sb_release(strbuf *sb);
 

@@ -2,13 +2,12 @@
 #include <string.h>
 #include "strbuf.h"
 
-strbuf* sb_new(int len)
+strbuf* sb_new(int minlen)
 {
 	strbuf *sb = memset(malloc(sizeof(strbuf)), 0, sizeof(strbuf));
-	if (len) {
-		sb->len  = len;
-		sb->size = len + 1;
-		sb->str  = memset(malloc(len + 1), 0, len + 1);
+	if (minlen) {
+		sb->size = minlen + 1;
+		sb->str  = memset(malloc(minlen + 1), 0, minlen + 1);
 	}
 	return sb;
 }
