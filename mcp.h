@@ -84,7 +84,7 @@ int mcp_parse(McpState *mcp, char *buf);
 * sends an MCP message to the remote; any arguments containing \n are
 * automatically sent in multiline format.
 */
-void mcp_send(McpState *mcp, McpMessage *msg);
+int mcp_send(McpState *mcp, McpMessage *msg);
 
 /*
 * sends a NON-MCP line to the remote. lines starting with "#$#" will be

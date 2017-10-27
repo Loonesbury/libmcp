@@ -510,11 +510,14 @@ static void cat_args(aa_node *n, void *arg)
 	cat_buf((struct bufinfo*)arg, " %s: %s", n->key, (char*)n->val);
 }
 
-void mcp_send(McpState *mcp, McpMessage *msg)
+int mcp_send(McpState *mcp, McpMessage *msg)
 {
 	struct bufinfo b;
 	int ok, ismcp = !strcmp(msg->name, "mcp");
 	int len = 3 + strlen(msg->name);
+
+	if (!mcp_supports(mcp, msg->name))
+		return 0;
 
 	if (!ismcp)
 		len += 1 + strlen(mcp->authkey);
@@ -530,13 +533,16 @@ void mcp_send(McpState *mcp, McpMessage *msg)
 	} else {
 		ok = cat_buf(&b, "#$#%s %s", msg->name, mcp->authkey);
 	}
-	if (ok) {
-		aa_foreach(msg->args, &cat_args, &b);
-		assert(b.s + 1 == b.e);
-		if (!b.err)
-			mcp->send(mcp->data, b.buf);
-	}
+	assert(ok);
+	aa_foreach(msg->args, &cat_args, &b);
+
+	assert(!b.err);
+	assert(b.s + 1 == b.e);
+
+	mcp->send(mcp->data, b.buf);
 	free(b.buf);
+
+	return 1;
 }
 
 void mcp_sendraw(McpState *mcp, char *str)
@@ -550,6 +556,11 @@ void mcp_sendraw(McpState *mcp, char *str)
 	} else {
 		mcp->send(mcp->data, str);
 	}
+}
+
+int mcp_supports(McpState *mcp, char *msgname)
+{
+	return aa_has(mcp->handlers, msgname);
 }
 
 McpMessage* mcp_newmsg(char *name)
