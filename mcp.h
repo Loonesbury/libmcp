@@ -91,6 +91,8 @@ int mcp_parse(McpState *mcp, char *buf);
 * Sends an MCP message to the remote. Returns false if message is unsupported,
 * or if any keys contain invalid letters (" * : \ <space>).
 * Values containing '\n' will be automatically sent as a multi-line message.
+*
+* FIXME: mcp_sendmsg() supports multiline values, but mcp_sendmsg() does NOT
 */
 int mcp_sendmsg(McpState *mcp, McpMessage *msg);
 
