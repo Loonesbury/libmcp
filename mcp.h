@@ -22,9 +22,13 @@ typedef struct McpState {
 	/* server can store client data here */
 	void *data;
 
+	/* last generated _data-tag */
+	/* (this should always be a 16-bit value) */
+	int last_tag;
+
 	/* registered packages */
 	struct aa_tree *pkgs;
-	/* function pointers (for packages the remote supports ONLY!) */
+	/* function pointers to messages the remote supports */
 	struct aa_tree *handlers;
 	/* unfinished multi-line args */
 	struct aa_tree *mlines;
@@ -84,15 +88,23 @@ int mcp_supports(McpState *mcp, char *msgname);
 int mcp_parse(McpState *mcp, char *buf);
 
 /*
-* sends an MCP message to the remote; any arguments containing \n are
-* automatically sent in multiline format.
+* Sends an MCP message to the remote. Returns false if message is unsupported,
+* or if any keys contain invalid letters (" * : \ <space>).
+* Values containing '\n' will be automatically sent as a multi-line message.
 */
-int mcp_send(McpState *mcp, McpMessage *msg);
+int mcp_sendmsg(McpState *mcp, McpMessage *msg);
 
 /*
-* sends a NON-MCP line to the remote. lines starting with "#$#" will be
-* automatically escaped before sending. you don't HAVE to route all your
-* output to the remote through here, but it's helpful.
+* Sends an MCP message as above. Args are {key, val} terminated with a NULL.
+* Usage:
+*   mcp_send(mcp, "mcp-cord-open", "_id", "I12345", "_type", "whiteboard", NULL)
+*/
+int mcp_send(McpState *mcp, char *msgname, ...);
+
+/*
+* Sends a NON-MCP line to the remote. Lines starting with "#$#" will be
+* automatically escaped before sending. You don't HAVE to route all your
+* output to the remote through here, but it helps.
 */
 void mcp_sendraw(McpState *mcp, char *str);
 

@@ -8,6 +8,29 @@
 #include "aa.h"
 #include "strbuf.h"
 
+#ifdef _WIN32
+unsigned int get_rand()
+{
+	unsigned int n;
+	/* XXX: 'implicit declaration' warning with MinGW gcc, but links OK */
+	rand_s(&n);
+	return n;
+}
+#else
+#include <unistd.h>
+#include <fctnl.h>
+unsigned int get_rand()
+{
+	int fd = open("/dev/urandom", O_RDONLY);
+	unsigned int n;
+	if (fd < 0)
+		return rand();
+	if (read(fd, &n, sizeof(n)) < 0)
+		return rand();
+	return n;
+}
+#endif
+
 /* sets 'ret' to the current token and null-terminates it */
 /* then skips whitespace afterward */
 #define ADVANCE(ret, s)\
@@ -141,7 +164,7 @@ static void foreach_pkgs(aa_node *n, void *arg)
 	ver_tostr(pkg->maxver, vstr, sizeof(vstr));
 	mcp_addarg(msg, "max-version", vstr);
 
-	mcp_send(mcp, msg);
+	mcp_sendmsg(mcp, msg);
 	mcp_freemsg(msg);
 }
 
@@ -149,7 +172,7 @@ static void foreach_pkgs(aa_node *n, void *arg)
 static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 {
 	/* our supported version */
-	int min = MCP_VERSION(2, 1), max = MCP_VERSION(2, 1);
+	int min, max;
 	/* their supported version */
 	int from, to;
 	McpMessage *endmsg;
@@ -158,6 +181,7 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 	if (mcp->version != 0)
 		return MCP_ERROR;
 
+	min  = max = MCP_VERSION(2, 1);
 	from = ver_get(msg, "version");
 	to   = ver_get(msg, "to");
 	if (from < 0 || to < 0) {
@@ -185,7 +209,7 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 		mcp_addarg(resp, "version", "2.1");
 		mcp_addarg(resp, "to", "2.1");
 		mcp_addarg(resp, "authentication-key", mcp->authkey);
-		mcp_send(mcp, resp);
+		mcp_sendmsg(mcp, resp);
 		mcp_freemsg(resp);
 	}
 
@@ -195,7 +219,7 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 	/* mcp-negotiate 1.0 doesn't recognize 'end', but it should be */
 	/* safely ignored by a compliant implementation */
 	endmsg = mcp_newmsg("mcp-negotiate-end");
-	mcp_send(mcp, endmsg);
+	mcp_sendmsg(mcp, endmsg);
 	mcp_freemsg(endmsg);
 
 	return MCP_OK;
@@ -226,7 +250,6 @@ McpState* mcp_newclient(McpSendFunc sendfn, char *authkey)
 	mcp->send = sendfn;
 	mcp->handlers = aa_new(&free);
 	mcp->mlines = aa_new(&aa_free_);
-
 	mcp->pkgs = aa_new(&mcp_freepkg_);
 
 	aa_insert(mcp->handlers, "mcp", mcp_wrapfn(&mcpfn_mcp));
@@ -516,7 +539,7 @@ static void cat_args(aa_node *n, void *arg)
 	cat_buf(b, " %s: %s", n->key, (char*)n->val);
 }
 
-int mcp_send(McpState *mcp, McpMessage *msg)
+int mcp_sendmsg(McpState *mcp, McpMessage *msg)
 {
 	struct bufinfo b;
 	int ok, ismcp = !strcmp(msg->name, "mcp");
@@ -545,13 +568,152 @@ int mcp_send(McpState *mcp, McpMessage *msg)
 		free(b.buf);
 		return 0;
 	}
-
 	assert(!b.err);
 	assert(b.s + 1 == b.e);
 
 	mcp->send(mcp->data, b.buf);
 	free(b.buf);
 
+	return 1;
+}
+
+int mcp_send(McpState *mcp, char *name, ...)
+{
+	aa_tree *args;
+	va_list argp;
+	int ismcp = !strcmp(name, "mcp"), m = 0, multilen = 0;
+	char *key, *val, *multi[512];
+	strbuf *sb;
+
+	if (!mcp_supports(mcp, name))
+		return 0;
+
+	sb = sb_new(511);
+	sb_concat(sb, "#$#");
+	sb_concat(sb, name);
+	if (!ismcp) {
+		sb_concat(sb, " ");
+		sb_concat(sb, mcp->authkey);
+	}
+
+	args = aa_new(NULL);
+	va_start(argp, name);
+
+	while (1) {
+		key = va_arg(argp, char*);
+		if (key == NULL) {
+			break;
+		}
+
+		if (!valid_ident(key)) {
+			va_end(argp);
+			sb_free(sb);
+			aa_free(args);
+			return 0;
+		}
+
+		val = va_arg(argp, char*);
+		assert(val != NULL);
+
+		sb_concat(sb, " ");
+		sb_concat(sb, key);
+
+		if (strchr(val, '\n') != NULL) {
+			/* arg is multi-line - store it and deal with it afterward */
+			char *v = val, *vend = val + strlen(val);
+			int klen = strlen(key), sublen = -1;
+			while (v < vend) {
+				/* argh argh argh */
+				sublen = strcspn(v, "\n");
+				if (klen + sublen > multilen)
+					multilen = klen + sublen;
+				v += sublen + 1;
+			}
+
+			/* empty dummy value */
+			sb_concat(sb, "*: \"\"");
+
+			assert(m < 256);
+			multi[m++] = key;
+			multi[m++] = val;
+			continue;
+		} else {
+			sb_concat(sb, ": ");
+		}
+
+		if (!valid_unquoted(val)) {
+			/* +2 for quotes */
+			int len = 2;
+			char *buf, *r = val, *w, c;
+			while ((c = *r++)) {
+				len++;
+				if (c == '\\' || c == '"')
+					len++;
+			}
+			buf = w = malloc(len + 1);
+			r = val;
+			*w++ = '"';
+			while ((c = *r++)) {
+				if (c == '\\' || c == '"')
+					*w++ = '\\';
+				*w++ = c;
+			}
+			*w++ = '"';
+			*w = '\0';
+			sb_concat(sb, buf);
+			free(buf);
+		} else {
+			sb_concat(sb, val);
+		}
+	}
+
+	if (m > 0) {
+		char temp[32];
+		int tag;
+		do {
+			tag = get_rand() & 0xFFFFFF;
+		} while (tag == mcp->last_tag);
+		mcp->last_tag = tag;
+
+		snprintf(temp, sizeof(temp), " _data-tag: %06X", tag);
+		sb_concat(sb, temp);
+	}
+
+	mcp->send(mcp->data, sb->str);
+	sb_free(sb);
+
+	/* did we have any multi-line values? */
+	if (m > 0) {
+		int len, mi = 0;
+		char *buf;
+
+		/* 5ch prefix, 6ch tag, 2 spaces and 1 colon */
+		len = 5 + 6 + 3 + multilen;
+		buf = malloc(len + 1);
+
+		while (mi + 1 < m) {
+			char *v, *vend;
+			int sublen;
+			key = multi[mi++];
+			val = multi[mi++];
+			v = val;
+			vend = val + strlen(val);
+
+			while (v < vend) {
+				sublen = strcspn(v, "\n");
+				snprintf(buf, len + 1, "#$#* %06X %s: %.*s", mcp->last_tag, key, sublen, v);
+				mcp->send(mcp->data, buf);
+				v = v + sublen + 1;
+			}
+		}
+
+		snprintf(buf, len + 1, "#$#: %06X", mcp->last_tag);
+		mcp->send(mcp->data, buf);
+		free(buf);
+	}
+
+	va_end(argp);
+	aa_free(args);
 	return 1;
 }
 
