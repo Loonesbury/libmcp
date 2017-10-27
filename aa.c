@@ -77,11 +77,12 @@ static aa_node* insertnode(aa_tree *tree, aa_node *n, char *key, void *val)
 		n->right = insertnode(tree, n->right, key, val);
 	} else {
 		/* existing value is replaced */
-		/* free(n->key);
+		free(n->key);
 		if (n->val && tree->freeval)
 			tree->freeval(n->val);
 		n->key = key;
-		n->val = val; */
+		n->val = val;
+		return n;
 	}
 	n = skew(n);
 	n = split(n);
