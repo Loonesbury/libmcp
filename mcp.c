@@ -18,7 +18,7 @@ unsigned int get_rand()
 }
 #else
 #include <unistd.h>
-#include <fctnl.h>
+#include <fcntl.h>
 unsigned int get_rand()
 {
 	int fd = open("/dev/urandom", O_RDONLY);
