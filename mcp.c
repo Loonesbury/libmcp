@@ -4,32 +4,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#ifndef _WIN32
+#include <unistd.h>
+#include <fcntl.h>
+#endif
 #include "mcp.h"
 #include "aa.h"
 #include "strbuf.h"
-
-#ifdef _WIN32
-unsigned int get_rand()
-{
-	unsigned int n;
-	/* XXX: 'implicit declaration' warning with MinGW gcc, but links OK */
-	rand_s(&n);
-	return n;
-}
-#else
-#include <unistd.h>
-#include <fcntl.h>
-unsigned int get_rand()
-{
-	int fd = open("/dev/urandom", O_RDONLY);
-	unsigned int n;
-	if (fd < 0)
-		return rand();
-	if (read(fd, &n, sizeof(n)) < 0)
-		return rand();
-	return n;
-}
-#endif
 
 /* sets 'ret' to the current token and null-terminates it */
 /* then skips whitespace afterward */
@@ -575,6 +556,23 @@ int mcp_sendmsg(McpState *mcp, McpMessage *msg)
 	free(b.buf);
 
 	return 1;
+}
+
+static unsigned int get_rand()
+{
+	unsigned int n;
+#ifdef _WIN32
+	/* XXX: 'implicit declaration' warning with MinGW gcc, but links OK */
+	if (rand_s(&n))
+		return rand();
+#else
+	int fd = open("/dev/urandom", O_RDONLY);
+	if (fd < 0)
+		return rand();
+	if (read(fd, &n, sizeof(n)) < 0)
+		return rand();
+#endif
+	return n;
 }
 
 int mcp_send(McpState *mcp, char *name, ...)
