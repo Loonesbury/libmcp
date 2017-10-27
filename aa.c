@@ -177,7 +177,7 @@ static aa_node* getnode(aa_tree *tree, char *key)
 			return n;
 		n = (cmp < 0) ? n->left : n->right;
 	}
-	return n;
+	return NULL;
 }
 
 void* aa_get(aa_tree *tree, char *key)
