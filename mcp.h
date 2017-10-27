@@ -69,6 +69,9 @@ McpState* mcp_newserver(McpSendFunc fn, void *data);
 */
 void mcp_free(McpState *mcp);
 
+/* Returns true if the given message is supported */
+int mcp_supports(McpState *mcp, char *msgname);
+
 /*
 * Parses and handles any MCP in 'buf', which MAY BE MODIFIED.
 * Input from the remote should all be routed through this function.
