@@ -36,14 +36,6 @@ typedef struct McpState {
 	McpSendFunc send;
 } McpState;
 
-typedef struct McpMessage {
-	char *name;
-	struct aa_tree *args;
-} McpMessage;
-
-/* Callback for MCP messages */
-typedef int (*McpFunc)(McpState* mcp, McpMessage *msg);
-
 typedef struct McpPackage {
 	char *name;
 	int minver;
@@ -51,9 +43,24 @@ typedef struct McpPackage {
 	struct aa_tree *funcs;
 } McpPackage;
 
-typedef struct McpFuncHandle {
+typedef struct McpPackageInfo {
+	McpPackage *pkg;
+	int version;
+} McpPackageInfo;
+
+typedef struct McpMessage {
+	char *name;
+	struct aa_tree *args;
+	McpPackageInfo *info;
+} McpMessage;
+
+/* Callback for MCP messages */
+typedef int (*McpFunc)(McpState* mcp, McpMessage *msg);
+
+typedef struct McpFuncInfo {
+	McpPackageInfo *info;
 	McpFunc fn;
-} McpFuncHandle;
+} McpFuncInfo;
 
 #define MCP_NONE  0
 #define MCP_OK    1

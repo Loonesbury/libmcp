@@ -134,7 +134,7 @@ static void foreach_pkgs(aa_node *n, void *arg)
 {
 	char vstr[16];
 	McpState *mcp = (McpState*)arg;
-	McpPackage *pkg = (McpPackage*)n->val;
+	McpPackage *pkg = ((McpPackageInfo*)n->val)->pkg;
 	mcp_send(mcp, "mcp-negotiate-can",
 		"package", pkg->name,
 		"min-version", vstr,
@@ -195,19 +195,17 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 	return MCP_OK;
 }
 
-static McpFuncHandle* mcp_wrapfn(McpFunc fn)
+McpFuncInfo* mcp_wrapfn(McpFunc fn, McpPackageInfo *info)
 {
-	McpFuncHandle *h = malloc(sizeof(McpFuncHandle));
+	McpFuncInfo *h = memset(malloc(sizeof(McpFuncInfo)), 0, sizeof(McpFuncInfo));
 	h->fn = fn;
+	h->info = info;
 	return h;
 }
 
 /* XXX: awful kludges to suppress warnings about incompatible pointer types */
 static void aa_free_(void *t) {
 	aa_free((aa_tree*)t);
-}
-static void mcp_freepkg_(void *pkg) {
-	mcp_freepkg((McpPackage*)pkg);
 }
 
 McpState* mcp_newclient(McpSendFunc sendfn, char *authkey)
@@ -220,9 +218,9 @@ McpState* mcp_newclient(McpSendFunc sendfn, char *authkey)
 	mcp->send = sendfn;
 	mcp->handlers = aa_new(&free);
 	mcp->mlines = aa_new(&aa_free_);
-	mcp->pkgs = aa_new(&mcp_freepkg_);
+	mcp->pkgs = aa_new(&free);
 
-	aa_insert(mcp->handlers, "mcp", mcp_wrapfn(&mcpfn_mcp));
+	aa_insert(mcp->handlers, "mcp", mcp_wrapfn(&mcpfn_mcp, NULL));
 
 	return mcp;
 }
@@ -248,15 +246,17 @@ void mcp_free(McpState *mcp)
 static int handle_msg(McpState *mcp, char *name, aa_tree *args)
 {
 	static McpMessage msg;
-	McpFuncHandle *h;
+	McpFuncInfo *h;
 
 	if (strcmp(name, "mcp") && mcp->version <= 0)
 		return MCP_ERROR;
 
+	h = (McpFuncInfo*)aa_get(mcp->handlers, name);
+
 	msg.name = name;
 	msg.args = args;
+	msg.info = h->info;
 
-	h = (McpFuncHandle*)aa_get(mcp->handlers, name);
 	assert(h != NULL);
 	return h->fn(mcp, &msg);
 }
@@ -788,10 +788,13 @@ void mcp_freepkg(McpPackage *pkg)
 
 int mcp_addfunc(McpPackage *pkg, char *name, McpFunc fn)
 {
-	return aa_insert(pkg->funcs, name, mcp_wrapfn(fn));
+	return aa_insert(pkg->funcs, name, mcp_wrapfn(fn, NULL));
 }
 
 int mcp_register(McpState *mcp, McpPackage *pkg)
 {
-	return aa_insert(mcp->pkgs, pkg->name, pkg);
+	McpPackageInfo *info = memset(malloc(sizeof(McpPackageInfo)), 0, sizeof(McpPackageInfo));
+	info->version = 0;
+	info->pkg = pkg;
+	return aa_insert(mcp->pkgs, pkg->name, info);
 }
