@@ -592,8 +592,8 @@ int mcp_send(McpState *mcp, char *name, int nkeys, ...)
 		key = va_arg(argp, char*);
 
 		if (!valid_ident(key)) {
-			va_end(argp);
 			sb_free(sb);
+			va_end(argp);
 			aa_free(args);
 			return 0;
 		} else if (aa_has(args, key)) {
@@ -657,6 +657,16 @@ int mcp_send(McpState *mcp, char *name, int nkeys, ...)
 	if (m > 0) {
 		char temp[32];
 		int tag;
+
+		/* don't let him set his own _data-tag for multiline messages. */
+		/* we COULD detect it, but i don't feel like doing that. */
+		if (aa_has(args, "_data-tag")) {
+			sb_free(sb);
+			va_end(argp);
+			aa_free(args);
+			return 0;
+		}
+
 		do {
 			tag = get_rand() & 0xFFFFFF;
 		} while (tag == mcp->last_tag);
