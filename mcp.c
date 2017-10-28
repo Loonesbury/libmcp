@@ -18,7 +18,8 @@
 {\
 	ret = s;\
 	while (*s && *s != ' ') s++;\
-	*s++ = '\0';\
+	if (*s)\
+		*s++ = '\0';\
 	SKIP_WS(s);\
 }
 #define SKIP_WS(s) { while (*s == ' ') s++; }
