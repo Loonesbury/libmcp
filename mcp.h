@@ -104,11 +104,11 @@ int mcp_parse(McpState *mcp, char *buf);
 int mcp_sendmsg(McpState *mcp, McpMessage *msg);
 
 /*
-* Sends an MCP message as above. Args are {key, val} terminated with a NULL.
+* Sends an MCP message as above, but with keys and values as varargs.
 * Usage:
-*   mcp_send(mcp, "mcp-cord-open", "_id", "I12345", "_type", "whiteboard", NULL)
+*   mcp_send(mcp, "mcp-cord-open", 2, "_id", "I12345", "_type", "whiteboard")
 */
-int mcp_send(McpState *mcp, char *msgname, ...);
+int mcp_send(McpState *mcp, char *msgname, int nkeys, ...);
 
 /*
 * Sends a NON-MCP line to the remote. Lines starting with "#$#" will be

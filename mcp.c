@@ -136,11 +136,10 @@ static void foreach_pkgs(aa_node *n, void *arg)
 	char vstr[16];
 	McpState *mcp = (McpState*)arg;
 	McpPackage *pkg = ((McpPackageInfo*)n->val)->pkg;
-	mcp_send(mcp, "mcp-negotiate-can",
+	mcp_send(mcp, "mcp-negotiate-can", 3,
 		"package", pkg->name,
 		"min-version", vstr,
-		"max-version", vstr,
-		NULL
+		"max-version", vstr
 	);
 }
 
@@ -180,7 +179,7 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 		}
 		mcp->authkey = str_dup(authkey);
 	} else {
-		mcp_send(mcp, "mcp",
+		mcp_send(mcp, "mcp", 3,
 			"version", "2.1",
 			"to", "2.1",
 			"authentication-key", mcp->authkey
@@ -191,7 +190,7 @@ static int mcpfn_mcp(McpState *mcp, McpMessage *msg)
 	aa_foreach(mcp->pkgs, &foreach_pkgs, mcp);
 	/* mcp-negotiate 1.0 doesn't recognize 'end', but it should be */
 	/* safely ignored by a compliant implementation */
-	mcp_send(mcp, "mcp-negotiate-end");
+	mcp_send(mcp, "mcp-negotiate-end", 0);
 
 	return MCP_OK;
 }
@@ -561,11 +560,12 @@ static unsigned int get_rand()
 	return n;
 }
 
-int mcp_send(McpState *mcp, char *name, ...)
+int mcp_send(McpState *mcp, char *name, int nkeys, ...)
 {
 	aa_tree *args;
 	va_list argp;
-	int ismcp = !strcmp(name, "mcp"), m = 0, multilen = 0;
+	int ismcp = !strcmp(name, "mcp");
+	int i, m = 0, multilen = 0;
 	char *key, *val, *multi[512];
 	strbuf *sb;
 
@@ -581,13 +581,10 @@ int mcp_send(McpState *mcp, char *name, ...)
 	}
 
 	args = aa_new(NULL);
-	va_start(argp, name);
+	va_start(argp, nkeys);
 
-	while (1) {
+	for (i = 0; i < nkeys; i++) {
 		key = va_arg(argp, char*);
-		if (key == NULL) {
-			break;
-		}
 
 		if (!valid_ident(key)) {
 			va_end(argp);
@@ -597,8 +594,6 @@ int mcp_send(McpState *mcp, char *name, ...)
 		}
 
 		val = va_arg(argp, char*);
-		assert(val != NULL);
-
 		sb_concat(sb, " ");
 		sb_concat(sb, key);
 
