@@ -131,20 +131,25 @@ int ver_get(McpMessage *msg, char *key)
 	return -1;
 }
 
-void ver_tostr(int ver, char *str, int sz)
+char* ver_tostr(int ver, char *str, int sz)
 {
 	snprintf(str, sz, "%i.%i", ver/1000, ver % 1000);
+	return str;
 }
 
 static void foreach_pkgs(aa_node *n, void *arg)
 {
-	char vstr[16];
+	char vmin[16], vmax[16];
 	McpState *mcp = (McpState*)arg;
 	McpPackage *pkg = ((McpPackageInfo*)n->val)->pkg;
+
+	ver_tostr(pkg->minver, vmin, sizeof(vmin));
+	ver_tostr(pkg->maxver, vmax, sizeof(vmin));
+
 	mcp_send(mcp, "mcp-negotiate-can", 3,
 		"package", pkg->name,
-		"min-version", vstr,
-		"max-version", vstr
+		"min-version", vmin,
+		"max-version", vmax
 	);
 }
 
