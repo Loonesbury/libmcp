@@ -336,7 +336,7 @@ int mcp_parse(McpState *mcp, char *buf)
 		if (!args)
 			return MCP_ERROR;
 
-		name = ((strbuf*)aa_get(args, "*name*"))->str;
+		name = ((McpArg*)aa_get(args, "*name*"))->val.str;
 		assert(name != NULL);
 
 		/* ARGH ARGH ARGH */
