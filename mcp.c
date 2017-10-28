@@ -97,10 +97,15 @@ static void mcp_freearg(void *val)
 static void foreach_args(aa_node *n, void *unused)
 {
 	McpArg *arg = (McpArg*)n->val;
-	if (arg->multi)
+	if (arg->multi) {
+		/* replace trailing '\n' with a terminator */
+		/* XXX: this is pretty terrible */
+		strbuf *sb = arg->val.buf;
+		sb->str[sb->len - 1] = '\0';
 		n->val = (void*)sb_release(arg->val.buf);
-	else
+	} else {
 		n->val = (void*)arg->val.str;
+	}
 	free(arg);
 }
 
