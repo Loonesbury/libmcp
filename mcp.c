@@ -596,6 +596,9 @@ int mcp_send(McpState *mcp, char *name, int nkeys, ...)
 			sb_free(sb);
 			aa_free(args);
 			return 0;
+		} else if (aa_has(args, key)) {
+			va_arg(argp, char*);
+			continue;
 		}
 
 		val = va_arg(argp, char*);
