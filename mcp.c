@@ -284,10 +284,8 @@ int mcp_parse(McpState *mcp, char *buf)
 	/* weird juggling because 'mcp' doesn't include an auth key */
 	if (strcmp(name, "mcp")) {
 		ADVANCE(authkey, b);
-		if (!valid_unquoted(authkey)) {
-			free(buf);
+		if (!valid_unquoted(authkey))
 			return MCP_ERROR;
-		}
 	}
 
 	/* continue a multi-line argument */
@@ -311,7 +309,6 @@ int mcp_parse(McpState *mcp, char *buf)
 		if (!valid_ident(argk) || *b != ' ') {
 			/* bad identifier, or no delimiter afterward */
 			aa_remove(mcp->mlines, authkey);
-			free(buf);
 			return MCP_ERROR;
 		}
 		b++;
@@ -343,8 +340,6 @@ int mcp_parse(McpState *mcp, char *buf)
 
 		rv = handle_msg(mcp, name, args);
 		aa_remove(mcp->mlines, authkey);
-
-		free(buf);
 		return rv;
 	}
 
