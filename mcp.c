@@ -297,14 +297,18 @@ int mcp_parse(McpState *mcp, char *buf)
 	if (!strcmp(name, "*")) {
 		McpArg *arg;
 
-		argk = b;
 		args = (aa_tree*)aa_get(mcp->mlines, authkey);
 		if (!args)
 			return MCP_ERROR;
 
 		/* wow! this is terrible! */
+		argk = b;
 		while (1) {
 			char c = *b;
+			if (!c) {
+				aa_remove(mcp->mlines, authkey);
+				return MCP_ERROR;
+			}
 			if (c == ':')
 				break;
 			*b++ = tolower(c);
