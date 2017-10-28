@@ -365,6 +365,7 @@ int mcp_parse(McpState *mcp, char *buf)
 			if (c == ':')
 				break;
 			if (c == '*') {
+				*b++ = '\0';
 				if (*b == ':') {
 					multiarg = 1;
 					break;
