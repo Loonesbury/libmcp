@@ -47,7 +47,7 @@ static int valid_ident(char *s)
 	if (!isalpha(c) && c != '_')
 		return 0;
 	while ((c = *s++)) {
-		if (!isalnum(c) && c != '_')
+		if (!isalnum(c) && c != '_' && c != '-')
 			return 0;
 	}
 	return 1;
