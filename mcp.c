@@ -117,9 +117,9 @@ int ver_get(McpMessage *msg, char *key)
 	if (!s || !isdigit(*s))
 		return -1;
 	ver += strtol(s, &n, 10)*1000;
-	if (!n || n == s || *n != '.')
+	if (!n || n == s || n[0] != '.' || !isdigit(n[1]))
 		return -1;
-	ver += strtol((s = n + 1), &n, 10);
+	ver += strtol(n + 1, &n, 10);
 	if (!n || !*n)
 		return ver;
 	return -1;
