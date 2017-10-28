@@ -453,6 +453,8 @@ int mcp_parse(McpState *mcp, char *buf)
 			aa_free(args);
 			return MCP_ERROR;
 		}
+
+		aa_insert(args, "*name*", mcp_newarg(name, 0));
 		aa_insert(mcp->mlines, tag->val.str, args);
 		return MCP_OK;
 	}
