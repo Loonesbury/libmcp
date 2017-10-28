@@ -438,14 +438,8 @@ int mcp_parse(McpState *mcp, char *buf)
 			return MCP_ERROR;
 		}
 
-		if (multiarg) {
-			if (!strcmp(argk, "_data-tag")) {
-				/* a wise guy, huh? */
-				aa_free(args);
-				return MCP_ERROR;
-			}
+		if (multiarg)
 			multi = 1;
-		}
 		aa_insert(args, argk, mcp_newarg(argv, multiarg));
 
 		SKIP_WS(b);
@@ -454,7 +448,7 @@ int mcp_parse(McpState *mcp, char *buf)
 	if (multi) {
 		/* got a multi-line key around here somewhere. */
 		McpArg *tag = (McpArg*)aa_get(args, "_data-tag");
-		if (tag == NULL || !valid_unquoted(tag->val.str)) {
+		if (tag == NULL || tag->multi || !valid_unquoted(tag->val.str)) {
 			/* or not. */
 			aa_free(args);
 			return MCP_ERROR;
