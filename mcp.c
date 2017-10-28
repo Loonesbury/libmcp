@@ -74,12 +74,12 @@ static McpArg* mcp_newarg(char *s, int multi)
 	arg->multi = multi;
 	if (multi) {
 		strbuf *sb = sb_new(256);
-		sb->str = s;
+		sb->str = str_dup(s);
 		sb->len = strlen(s);
 		sb->size = sb->len + 1;
 		arg->val.buf = sb;
 	} else {
-		arg->val.str = s;
+		arg->val.str = str_dup(s);
 	}
 	return arg;
 }
@@ -94,7 +94,7 @@ static void mcp_freearg(void *val)
 	free(arg);
 }
 
-static void foreach_args(aa_node *n, void *_)
+static void foreach_args(aa_node *n, void *unused)
 {
 	McpArg *arg = (McpArg*)n->val;
 	if (arg->multi)
@@ -437,7 +437,7 @@ int mcp_parse(McpState *mcp, char *buf)
 			}
 			multi = 1;
 		}
-		aa_insert(args, argk, mcp_newarg(str_dup(argv), multiarg));
+		aa_insert(args, argk, mcp_newarg(argv, multiarg));
 
 		SKIP_WS(b);
 	}
