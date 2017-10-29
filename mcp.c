@@ -255,6 +255,14 @@ static void aa_free_(void *t) {
 	aa_free((aa_tree*)t);
 }
 
+static void free_pkgs(void *val)
+{
+	McpPackageInfo *pinfo = val;
+	if (pinfo->builtin)
+		mcp_freepkg(pinfo->pkg);
+	free(pinfo);
+}
+
 static McpState* new_state(McpSendFunc sendfn, char *authkey, void *data)
 {
 	McpState *mcp = memset(malloc(sizeof(McpState)), 0, sizeof(McpState));
@@ -264,7 +272,7 @@ static McpState* new_state(McpSendFunc sendfn, char *authkey, void *data)
 		mcp->data = data;
 
 	mcp->funcs = aa_new(&free);
-	mcp->pkgs = aa_new(&free);
+	mcp->pkgs = aa_new(&free_pkgs);
 	mcp->mlines = aa_new(&aa_free_);
 	mcp->send = sendfn;
 

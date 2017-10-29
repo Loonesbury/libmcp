@@ -13,8 +13,8 @@ typedef struct McpPackage {
 /* 'Loaded' package info, specific to each state */
 typedef struct McpPackageInfo {
 	McpPackage *pkg;
-	/* version in use between client and server */
-	int version;
+	int version; /* version in use between client and server */
+	int builtin; /* builtin package - must be freed when state is closed */
 } McpPackageInfo;
 
 typedef struct McpMessage {
