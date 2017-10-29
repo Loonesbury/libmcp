@@ -24,11 +24,9 @@
 }
 #define SKIP_WS(s) { while (*s == ' ') s++; }
 
-static char *str_dup(char *s)
-{
-	int sz = strlen(s) + 1;
-	return memcpy(malloc(sz), s, sz);
-}
+#ifdef _MSC_VER
+#define strdup _strdup
+#endif
 
 static char* str_lower(char *s)
 {
@@ -74,12 +72,12 @@ static McpArg* new_arg(char *s, int multi)
 	arg->multi = multi;
 	if (multi) {
 		strbuf *sb = sb_new(256);
-		sb->str = str_dup(s);
+		sb->str = strdup(s);
 		sb->len = strlen(s);
 		sb->size = sb->len + 1;
 		arg->val.buf = sb;
 	} else {
-		arg->val.str = str_dup(s);
+		arg->val.str = strdup(s);
 	}
 	return arg;
 }
@@ -192,7 +190,7 @@ static MCP_PROTO(mcpfn_mcp)
 			mcp->version = -1;
 			return MCP_ERROR;
 		}
-		mcp->authkey = str_dup(authkey);
+		mcp->authkey = strdup(authkey);
 	} else {
 		MCP_START("mcp");
 		MCP_ADD("version", "2.1");
@@ -228,7 +226,7 @@ static McpState* new_state(McpSendFunc sendfn, char *authkey, void *data)
 {
 	McpState *mcp = memset(malloc(sizeof(McpState)), 0, sizeof(McpState));
 	if (authkey)
-		mcp->authkey = str_dup(authkey);
+		mcp->authkey = strdup(authkey);
 	else
 		mcp->data = data;
 
@@ -706,7 +704,7 @@ int mcp_supports(McpState *mcp, char *msgname)
 McpMessage* mcp_newmsg(char *name)
 {
 	McpMessage *msg = memset(malloc(sizeof(McpMessage)), 0, sizeof(McpMessage));
-	msg->name = str_dup(name);
+	msg->name = strdup(name);
 	msg->args = aa_new(&free);
 	return msg;
 }
@@ -739,14 +737,14 @@ int mcp_addmsg(McpMessage *msg, char *key, char *val)
 		}
 
 		/* value isn't sent as a key-val, so we don't need to escape it */
-		aa_insert(msg->args, key, str_dup(val));
+		aa_insert(msg->args, key, strdup(val));
 
 		/* +1 for asterisk, +2 for empty quotes */
 		msg->arglen += 3;
 
 	/* simple unquoted value */
 	} else if (valid_unquoted(val)) {
-		aa_insert(msg->args, key, str_dup(val));
+		aa_insert(msg->args, key, strdup(val));
 		msg->arglen += strlen(val);
 
 	/* quoted value */
@@ -787,7 +785,7 @@ char* mcp_getarg(McpState *mcp, char *key)
 McpPackage* mcp_newpkg(char *name, int minver, int maxver)
 {
 	McpPackage *pkg = memset(malloc(sizeof(McpPackage)), 0, sizeof(McpPackage));
-	pkg->name = str_dup(name);
+	pkg->name = strdup(name);
 	pkg->minver = minver;
 	pkg->maxver = maxver;
 	pkg->funcs = aa_new(&free);
