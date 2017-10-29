@@ -10,7 +10,7 @@ CC=gcc
 DEPFLAGS=-c
 CFLAGS=-g -fPIC -Wall -Wpedantic
 LFLAGS=-g -shared
-SRC=mcp.c strbuf.c aa.c
+SRC=mcp.c builtins.c strbuf.c aa.c
 OBJ=$(SRC:%.c=%.o)
 OUTFILE=libmcp.$(EXT)
 
