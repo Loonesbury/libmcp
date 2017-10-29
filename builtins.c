@@ -170,17 +170,8 @@ static MCP_PROTO(mcpfn_negotiate_can)
 	return MCP_OK;
 }
 
-static void print_pkgs(aa_node *n, void *arg)
-{
-	McpPackageInfo *pinfo = n->val;
-	printf("%s: %i\n", pinfo->pkg->name, pinfo->version);
-}
-
 static MCP_PROTO(mcpfn_negotiate_end)
 {
-	printf("-----\n");
-	aa_foreach(mcp->pkgs, &print_pkgs, NULL);
-	printf("-----\n");
 	return MCP_OK;
 }
 
