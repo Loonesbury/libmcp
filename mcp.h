@@ -122,8 +122,8 @@ void mcp_sendraw(McpState *mcp, char *str);
 *
 * Ex:
 *   if (mcp_begin(mcp, "mcp-cord-open")) {
-*       mcp_arg(mcp, "_id", "I12345");
-*       mcp_arg(mcp, "type", "whiteboard");
+*       mcp_addarg(mcp, "_id", "I12345");
+*       mcp_addarg(mcp, "type", "whiteboard");
 *       mcp_send(mcp);
 *   }
 *
