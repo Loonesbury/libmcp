@@ -28,13 +28,11 @@
 #define strdup _strdup
 #endif
 
-static char* str_lower(char *s)
+static char* lower_str(char *s)
 {
-	char *p = s;
-	while (*p) {
+	char *p;
+	for (p = s; *p; p++)
 		*p = tolower(*p);
-		p++;
-	}
 	return s;
 }
 
@@ -342,7 +340,7 @@ int mcp_parse(McpState *mcp, char *buf)
 	ADVANCE(name, b);
 	if (!*name)
 		return MCP_ERROR;
-	str_lower(name);
+	lower_str(name);
 
 	/* weird juggling because 'mcp' doesn't include an auth key */
 	if (strcmp(name, "mcp")) {
