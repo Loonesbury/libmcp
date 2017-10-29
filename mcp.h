@@ -88,7 +88,7 @@ typedef struct McpFuncInfo {
 
 /*
 * Opens a new MCP state.
-* - Client authkeys may NOT contain " * : \ <space>
+* - 'authkey' must be printable chars ONLY, except " * : \ <space>
 * - 'data' is not freed by mcp_free()
 */
 McpState* mcp_newclient(McpSendFunc fn, char *authkey);
@@ -113,14 +113,19 @@ int mcp_parse(McpState *mcp, char *buf);
 void mcp_sendraw(McpState *mcp, char *str);
 
 /*
-* Sends an MCP message to the remote. Returns false if message is unsupported,
-* or if any keys contain invalid letters (" * : \ <space>).
+* Sends an MCP message to the remote. Returns false if message is unsupported.
 * Values containing '\n' will be automatically sent as a multi-line message.
+*
+* THIS WILL PANIC ON INVALID INPUT:
+* - Keys must follow C identifier rules, plus hyphens after first char
+* - Values must be printable chars (32-126) plus newlines
+*
 * Ex:
-*   mcp_begin(mcp, "mcp-cord-open");
-*   mcp_arg(mcp, "_id", "I12345");
-*   mcp_arg(mcp, "type", "whiteboard");
-*   mcp_send(mcp);
+*   if (mcp_begin(mcp, "mcp-cord-open")) {
+*       mcp_arg(mcp, "_id", "I12345");
+*       mcp_arg(mcp, "type", "whiteboard");
+*       mcp_send(mcp);
+*   }
 *
 *   mcp_sendsimple(mcp, "mcp-cord-open", 2,
 *       "_id", "I12345",
@@ -140,6 +145,10 @@ McpMessage* mcp_newmsg (char *name);
 int         mcp_addmsg (McpMessage *msg, char *key, char *val);
 int         mcp_sendmsg(McpState *mcp, McpMessage *msg);
 void        mcp_freemsg(McpMessage *msg);
+
+int mcp_validkey(char *s);
+int mcp_validinput(char *s);
+int mcp_validident(char *s);
 
 /* Returns true if the given message is supported */
 int mcp_supports(McpState *mcp, char *msgname);

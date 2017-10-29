@@ -38,25 +38,58 @@ static char* str_lower(char *s)
 	return s;
 }
 
-/* checks if 's' is a valid keyword */
-static int valid_ident(char *s)
+#define PRINTABLE 0x1
+#define SIMPLE    0x2
+#define IDENT     0x4
+
+static char okchars[] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	1, 3, 1, 3, 3, 3, 3, 3, 3, 3, 1, 3, 3, 7, 3, 3, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1, 3, 3, 3, 3, 3,
+	3, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 3, 1, 3, 3, 7,
+	3, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 3, 3, 3, 3, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+/* printable characters */
+static int valid_input(char *s)
 {
-	char c = *s++;
-	if (!isalpha(c) && c != '_')
-		return 0;
+	unsigned char c;
 	while ((c = *s++)) {
-		if (!isalnum(c) && c != '_' && c != '-')
+		if (!(okchars[c] & PRINTABLE))
 			return 0;
 	}
 	return 1;
 }
 
-/* checks if 's' is a valid simple (unquoted) string */
-/* this is also used for authentication keys and _data-tags */
-static int valid_unquoted(char *s)
+/* valid unquoted string (or authkey/datatag) */
+int mcp_validkey(char *s)
 {
-	return !strpbrk(s, "\"*\\: \n");
+	unsigned char c;
+	while ((c = *s++)) {
+		if (!(okchars[c] & SIMPLE))
+			return 0;
+	}
+	return 1;
 }
+#define valid_unquoted mcp_validkey
+
+/* valid argument keyword? */
+int mcp_validident(char *s)
+{
+	unsigned char c = *s++;
+	/* IDENT is alnum + '-', but first char must be alnum */
+	if (!(okchars[c] & IDENT) || c == '-')
+		return 0;
+	while ((c = *s++)) {
+		if (!(okchars[c] & IDENT))
+			return 0;
+	}
+	return 1;
+}
+#define valid_ident
 
 typedef struct McpArg {
 	int multi;
@@ -295,6 +328,9 @@ int mcp_parse(McpState *mcp, char *buf)
 	char *b = buf + 3, *bend = buf + len;
 	aa_tree *args;
 
+	if (!valid_input(buf))
+		return MCP_ERROR;
+
 	/* if it's escaped, wipe out the escape and pass it back */
 	if (!strncmp(buf, "#$\"", 3)) {
 		memmove(buf + 3, buf, len + 1);
@@ -503,6 +539,7 @@ void mcp_addarg(McpState *mcp, char *key, char *val)
 {
 	assert(mcp->outmsg != NULL);
 	assert(valid_ident(key));
+	assert(valid_input(val));
 	mcp_addmsg(mcp->outmsg, key, val);
 }
 
@@ -720,6 +757,7 @@ int mcp_addmsg(McpMessage *msg, char *key, char *val)
 {
 	if (!valid_ident(key) || aa_has(msg->args, key))
 		return 0;
+	assert(valid_input(val));
 
 	/* +3 for delimiters */
 	msg->arglen += 3 + strlen(key);
