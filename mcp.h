@@ -146,9 +146,10 @@ int         mcp_addmsg (McpMessage *msg, char *key, char *val);
 int         mcp_sendmsg(McpState *mcp, McpMessage *msg);
 void        mcp_freemsg(McpMessage *msg);
 
-int mcp_validkey(char *s);
-int mcp_validinput(char *s);
-int mcp_validident(char *s);
+/* Input validation */
+int mcp_validinput(char *s); /* printable (for mcp_parse) */
+int mcp_validkey(char *s);   /* valid authkey (for mcp_newclient) */
+int mcp_validident(char *s); /* valid keyword (for MCP_ADD etc) */
 
 /* Returns true if the given message is supported */
 int mcp_supports(McpState *mcp, char *msgname);
