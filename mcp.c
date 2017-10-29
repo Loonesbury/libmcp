@@ -66,6 +66,8 @@ static int valid_input(char *s)
 int mcp_validkey(char *s)
 {
 	unsigned char c;
+	if (!*s)
+		return 0;
 	while ((c = *s++)) {
 		if (!(okchars[c] & SIMPLE))
 			return 0;
