@@ -57,7 +57,7 @@ static int valid_ident(char *s)
 /* this is also used for authentication keys and _data-tags */
 static int valid_unquoted(char *s)
 {
-	return !strpbrk(s, "\"*\\: ");
+	return !strpbrk(s, "\"*\\: \n");
 }
 
 typedef struct McpArg {
