@@ -120,7 +120,7 @@ int ver_check(int low, int high, int min, int max)
 {
 	if (high >= min && max >= low)
 		return (high > max) ? max : high;
-	return 0;
+	return -1;
 }
 
 int ver_toint(char *s)
@@ -180,9 +180,10 @@ static MCP_PROTO(mcpfn_mcp)
 	}
 
 	mcp->version = ver_check(from, to, min, max);
-	if (!mcp->version)
+	if (mcp->version <= 0) {
 		/* not technically an error */
 		return MCP_OK;
+	}
 
 	if (mcp->server) {
 		/* server gets authkey from client */
