@@ -822,6 +822,7 @@ McpPackage* mcp_newpkg(char *name, int minver, int maxver)
 {
 	McpPackage *pkg = memset(malloc(sizeof(McpPackage)), 0, sizeof(McpPackage));
 	pkg->name = strdup(name);
+	lower_str(pkg->name);
 	pkg->minver = minver;
 	pkg->maxver = maxver;
 	pkg->funcs = aa_new(&free);
