@@ -78,7 +78,7 @@ static aa_node* insertnode(aa_tree *tree, aa_node *n, char *key, void *val)
 	} else {
 		/* existing value is replaced */
 		free(n->key);
-		if (n->val && tree->freeval)
+		if (n->val && n->val != val && tree->freeval)
 			tree->freeval(n->val);
 		n->key = strdup(key);
 		n->val = val;
