@@ -1,44 +1,42 @@
 #ifndef LIBMCP_H
 #define LIBMCP_H
+
 struct aa_tree;
 
-/* MCP package - shared between multiple states */
-typedef struct McpPackage {
-	char *name;
-	int minver;
-	int maxver;
-	struct aa_tree *funcs;
-} McpPackage;
+typedef struct McpState McpState;
+typedef struct McpMessage McpMessage;
+typedef struct McpPackage McpPackage;
 
-/* 'Loaded' package info, specific to each state */
-typedef struct McpPackageInfo {
-	McpPackage *pkg;
-	int version; /* version in use between client and server */
-	int builtin; /* builtin package - must be freed when state is closed */
-} McpPackageInfo;
-
-typedef struct McpMessage {
-	char *name;
-	struct aa_tree *args;
-	McpPackageInfo *pkg;
-
-	/* only used for outgoing messages */
-	int arglen;   /* length of key-vals, including delimiters */
-	int multilen; /* longest line of a multi-line value */
-} McpMessage;
+typedef struct McpPackageInfo McpPackageInfo;
+typedef struct McpFuncInfo McpFuncInfo;
 
 /*
 * Callback to send raw output to the remote.
 * If on server, 'data' is the pointer passed to mcp_newserver()
 * If on client, 'data' is always NULL
 */
-typedef void (*McpSendFunc)(void *data, char *str);
-
 #define MCP_SENDARGS void *data, char *str
 #define MCP_SENDPROTO(name) void name(MCP_SENDARGS)
+typedef void (*McpSendFunc)(MCP_SENDARGS);
+
+/*
+* Callback to handle individual MCP messages.
+*/
+#define MCP_FUNCARGS McpState *mcp, McpPackageInfo *pkg, McpMessage *msg
+#define MCP_PROTO(name) int name(MCP_FUNCARGS)
+typedef int (*McpFunc)(MCP_FUNCARGS);
+
+#define MCP_GET(key) mcp_getarg(mcp, key)
+
+/* Generates an internal version number for mcp_newpkg() */
+#define MCP_VERSION(major,minor) ((major)*1000 + (minor))
+
+#define MCP_NONE  0
+#define MCP_OK    1
+#define MCP_ERROR 2
 
 /* Main MCP state */
-typedef struct McpState {
+struct McpState {
 	/*
 	* version established between client and server
 	* 0 if negotiation hasn't started
@@ -65,26 +63,39 @@ typedef struct McpState {
 
 	/* function pointer used for sending output */
 	McpSendFunc send;
-} McpState;
+};
 
-#define MCP_FUNCARGS McpState *mcp, McpPackageInfo *pkg, McpMessage *msg
-#define MCP_PROTO(name) int name(MCP_FUNCARGS)
+/* MCP package - shared between multiple states */
+struct McpPackage {
+	char *name;
+	int minver;
+	int maxver;
+	struct aa_tree *funcs;
+};
 
-/* Callback for MCP messages */
-typedef int (*McpFunc)(MCP_FUNCARGS);
+struct McpMessage {
+	char *name;
+	struct aa_tree *args;
+	McpPackageInfo *pkg;
+
+	/* only used for outgoing messages */
+	int arglen;   /* length of key-vals, including delimiters */
+	int multilen; /* longest line of a multi-line value */
+};
+
+/* 'Loaded' package info, specific to each state */
+struct McpPackageInfo {
+	McpPackage *pkg;
+	int version; /* version in use between client and server */
+	int builtin; /* builtin package - must be freed when state is closed */
+};
 
 /* Handle for funcs */
 /* NOTE: Not shared between mcp->funcs and pkg->funcs */
-typedef struct McpFuncInfo {
+struct McpFuncInfo {
 	McpPackageInfo *pinfo;
 	McpFunc fn;
-} McpFuncInfo;
-
-#define MCP_NONE  0
-#define MCP_OK    1
-#define MCP_ERROR 2
-
-#define MCP_VERSION(major,minor) ((major)*1000 + (minor))
+};
 
 /*
 * Opens a new MCP state.
@@ -111,6 +122,14 @@ int mcp_parse(McpState *mcp, char *buf);
 * output to the remote through here, but it helps.
 */
 void mcp_sendraw(McpState *mcp, char *str);
+
+/* Input validation */
+int mcp_validinput(char *s); /* printable (for mcp_parse) */
+int mcp_validkey(char *s);   /* valid authkey (for mcp_newclient) */
+int mcp_validident(char *s); /* valid keyword (for MCP_ADD etc) */
+
+/* Returns true if the given message is supported */
+int mcp_supports(McpState *mcp, char *msgname);
 
 /*
 * Sends an MCP message to the remote. Returns false if message is unsupported.
@@ -141,32 +160,29 @@ int   mcp_sendsimple(McpState *mcp, char *msgname, int nkeys, ...);
 #define MCP_ADD(key,val) mcp_addarg(mcp, key, val)
 #define MCP_SEND() mcp_send(mcp)
 
+/*
+* Functions for creating an MCP message manually
+* Input is still subject to the restrictions above
+*/
 McpMessage* mcp_newmsg (char *name);
 int         mcp_addmsg (McpMessage *msg, char *key, char *val);
 int         mcp_sendmsg(McpState *mcp, McpMessage *msg);
 void        mcp_freemsg(McpMessage *msg);
 
-/* Input validation */
-int mcp_validinput(char *s); /* printable (for mcp_parse) */
-int mcp_validkey(char *s);   /* valid authkey (for mcp_newclient) */
-int mcp_validident(char *s); /* valid keyword (for MCP_ADD etc) */
-
-/* Returns true if the given message is supported */
-int mcp_supports(McpState *mcp, char *msgname);
+/*
+* Gets an argument from inside an MCP message callback.
+* Will do terrible things if you aren't in a callback.
+*/
+char* mcp_getarg(McpState *mcp, char *key);
 
 /*
 * Creates a new MCP package. Packages must be registered before negotiation,
 * and may be shared between multiple states; they are not freed by mcp_free().
 */
-McpPackage* mcp_newpkg  (char *name, int minver, int maxver);
-int         mcp_addfunc (McpPackage *pkg, char *name, McpFunc fn);
-void        mcp_freepkg (McpPackage *pkg);
+McpPackage* mcp_newpkg (char *name, int minver, int maxver);
+int         mcp_addfunc(McpPackage *pkg, char *name, McpFunc fn);
+void        mcp_freepkg(McpPackage *pkg);
 
 McpPackageInfo* mcp_register(McpState *mcp, McpPackage *pkg);
-
-/* Gets an argument from inside an MCP func */
-char* mcp_getarg(McpState *mcp, char *key);
-
-#define MCP_GET(key) mcp_getarg(mcp, key)
 
 #endif
