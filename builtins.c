@@ -100,8 +100,8 @@ static MCP_PROTO(mcpfn_mcp)
 	aa_foreach(mcp->pkgs, &notify_pkg, mcp);
 	/* mcp-negotiate 1.0 doesn't recognize 'end', but it should be */
 	/* safely ignored by a compliant implementation */
-	/* MCP_START("mcp-negotiate-end");
-	MCP_SEND(); */
+	MCP_START("mcp-negotiate-end");
+	MCP_SEND();
 
 	return MCP_OK;
 }
