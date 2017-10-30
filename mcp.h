@@ -164,8 +164,8 @@ int   mcp_sendsimple(McpState *mcp, char *msgname, int nkeys, ...);
 * Functions for creating an MCP message manually
 * Input is still subject to the restrictions above
 */
-McpMessage* mcp_newmsg (char *name);
-int         mcp_addmsg (McpMessage *msg, char *key, char *val);
+McpMessage* mcp_newmsg(char *name);
+int         mcp_addmsgarg(McpMessage *msg, char *key, char *val);
 int         mcp_sendmsg(McpState *mcp, McpMessage *msg);
 void        mcp_freemsg(McpMessage *msg);
 

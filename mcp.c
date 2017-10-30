@@ -447,7 +447,7 @@ void mcp_addarg(McpState *mcp, char *key, char *val)
 	assert(mcp->outmsg != NULL);
 	assert(valid_ident(key));
 	assert(valid_input(val));
-	mcp_addmsg(mcp->outmsg, key, val);
+	mcp_addmsgarg(mcp->outmsg, key, val);
 }
 
 void mcp_send(McpState *mcp)
@@ -660,7 +660,7 @@ void mcp_freemsg(McpMessage *msg)
 	free(msg);
 }
 
-int mcp_addmsg(McpMessage *msg, char *key, char *val)
+int mcp_addmsgarg(McpMessage *msg, char *key, char *val)
 {
 	if (!valid_ident(key) || aa_has(msg->args, key))
 		return 0;
