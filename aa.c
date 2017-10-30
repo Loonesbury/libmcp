@@ -4,6 +4,12 @@
 #include <assert.h>
 #include "aa.h"
 
+#ifdef _MSC_VER
+#define strdup _strdup
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
+#endif
+
 static aa_node* newnode(aa_tree *tree, char *key, void *val)
 {
 	aa_node *n = memset(malloc(sizeof(aa_node)), 0, sizeof(aa_node));
@@ -70,7 +76,7 @@ static aa_node* insertnode(aa_tree *tree, aa_node *n, char *key, void *val)
 		return newnode(tree, key, val);
 	}
 
-	cmp = strcmp(key, n->key);
+	cmp = strcasecmp(key, n->key);
 	if (cmp < 0) {
 		n->left = insertnode(tree, n->left, key, val);
 	} else if (cmp > 0) {
@@ -98,7 +104,7 @@ static aa_node* removenode(aa_tree *tree, aa_node *n, char *key)
 	tree->last = n;
 
 	/* 1: search down the tree and set pointers 'last' and 'deleted' */
-	cmp = strcmp(key, n->key);
+	cmp = strcasecmp(key, n->key);
 	if (cmp < 0) {
 		n->left = removenode(tree, n->left, key);
 	} else {
@@ -172,7 +178,7 @@ static aa_node* getnode(aa_tree *tree, char *key)
 	aa_node *n = tree->top;
 	int cmp;
 	while (n != tree->bottom) {
-		cmp = strcmp(key, n->key);
+		cmp = strcasecmp(key, n->key);
 		if (!cmp)
 			return n;
 		n = (cmp < 0) ? n->left : n->right;

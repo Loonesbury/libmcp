@@ -28,15 +28,9 @@ extern void mcp_addbuiltins(McpState *mcp);
 
 #ifdef _MSC_VER
 #define strdup _strdup
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
 #endif
-
-char* lower_str(char *s)
-{
-	char *p;
-	for (p = s; *p; p++)
-		*p = tolower(*p);
-	return s;
-}
 
 #define PRINTABLE 0x1
 #define SIMPLE    0x2
@@ -218,7 +212,7 @@ static int handle_msg(McpState *mcp, char *name, aa_tree *args)
 	McpFuncInfo *func;
 	int rv;
 
-	if (strcmp(name, "mcp") && mcp->version <= 0)
+	if (strcasecmp(name, "mcp") && mcp->version <= 0)
 		return MCP_ERROR;
 
 	func = (McpFuncInfo*)aa_get(mcp->funcs, name);
@@ -256,10 +250,9 @@ int mcp_parse(McpState *mcp, char *buf)
 	ADVANCE(name, b);
 	if (!*name)
 		return MCP_ERROR;
-	lower_str(name);
 
 	/* weird juggling because 'mcp' doesn't include an auth key */
-	if (strcmp(name, "mcp")) {
+	if (strcasecmp(name, "mcp")) {
 		ADVANCE(authkey, b);
 		if (!valid_unquoted(authkey))
 			return MCP_ERROR;
@@ -275,15 +268,12 @@ int mcp_parse(McpState *mcp, char *buf)
 
 		/* wow! this is terrible! */
 		argk = b;
-		while (1) {
-			char c = *b;
-			if (!c) {
+		while (*b != ':') {
+			if (*b == '\0') {
 				aa_remove(mcp->mlines, authkey);
 				return MCP_ERROR;
 			}
-			if (c == ':')
-				break;
-			*b++ = tolower(c);
+			b++;
 		}
 		*b++ = '\0';
 
@@ -321,7 +311,7 @@ int mcp_parse(McpState *mcp, char *buf)
 		return rv;
 	}
 
-	if (strcmp(name, "mcp")) {
+	if (strcasecmp(name, "mcp")) {
 		if (strcmp(authkey, mcp->authkey))
 			return MCP_ERROR;
 	}
@@ -568,7 +558,7 @@ static unsigned int get_rand()
 int mcp_sendmsg(McpState *mcp, McpMessage *msg)
 {
 	struct bufinfo b;
-	int len, ok, ismcp = !strcmp(msg->name, "mcp");
+	int len, ok, ismcp = !strcasecmp(msg->name, "mcp");
 	char tagstr[32];
 
 	if (!mcp_supports(mcp, msg->name))
@@ -738,7 +728,6 @@ McpPackage* mcp_newpkg(char *name, int minver, int maxver)
 {
 	McpPackage *pkg = memset(malloc(sizeof(McpPackage)), 0, sizeof(McpPackage));
 	pkg->name = strdup(name);
-	lower_str(pkg->name);
 	pkg->minver = minver;
 	pkg->maxver = maxver;
 	pkg->funcs = aa_new(&free);

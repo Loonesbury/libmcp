@@ -9,7 +9,6 @@
 #define strdup _strdup
 #endif
 
-extern char* lower_str(char *s);
 #define valid_unquoted mcp_validkey
 extern McpFuncInfo* mcp_wrapfn(McpFunc fn, McpPackageInfo *pinfo);
 
@@ -141,7 +140,6 @@ static MCP_PROTO(mcpfn_negotiate_can)
 	pkgname = MCP_GET("package");
 	if (!pkgname)
 		return MCP_ERROR;
-	lower_str(pkgname);
 
 	pinfo = aa_get(mcp->pkgs, pkgname);
 	if (!pinfo)
