@@ -12,6 +12,9 @@
 #include "aa.h"
 #include "strbuf.h"
 
+#if defined(_WIN32) && !defined(_MSC_VER)
+extern int rand_s(unsigned int*);
+#endif
 extern void mcp_addbuiltins(McpState *mcp);
 
 /* sets 'ret' to the current token and null-terminates it */
