@@ -153,7 +153,7 @@ static MCP_PROTO(mcpfn_negotiate_can)
 	if (minver < 0 || maxver < 0) {
 		/* the standard doesn't say that 0.0 is an illegal version */
 		/* so we only halt for malformed numbers */
-		mcp->version = -1;
+		pinfo->version = -1;
 		return MCP_ERROR;
 	}
 
