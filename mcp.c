@@ -209,6 +209,18 @@ void mcp_free(McpState *mcp)
 	free(mcp);
 }
 
+static McpFuncInfo* find_handler(McpState *mcp, char *name)
+{
+	McpFuncInfo *func = aa_get(mcp->funcs, name);
+	char *c;
+	if (!func && (c = strrchr(name, '-'))) {
+		char tmp[256];
+		snprintf(tmp, sizeof(tmp), "%*s", c - name, name);
+		func = aa_get(mcp->funcs, tmp);
+	}
+	return func;
+}
+
 static int handle_msg(McpState *mcp, char *name, aa_tree *args)
 {
 	McpMessage msg;
@@ -218,7 +230,7 @@ static int handle_msg(McpState *mcp, char *name, aa_tree *args)
 	if (strcasecmp(name, "mcp") && mcp->version <= 0)
 		return MCP_ERROR;
 
-	func = (McpFuncInfo*)aa_get(mcp->funcs, name);
+	func = find_handler(mcp, name);
 	assert(func != NULL);
 
 	msg.name = name;
@@ -319,7 +331,7 @@ int mcp_parse(McpState *mcp, char *buf)
 			return MCP_ERROR;
 	}
 
-	if (!aa_get(mcp->funcs, name))
+	if (!find_handler(mcp, name))
 		return MCP_ERROR;
 
 	args = aa_new(&free_arg);
